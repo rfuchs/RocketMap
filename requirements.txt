@@ -26,4 +26,3 @@ git+https://github.com/maddhatter/Flask-CacheBust.git@38d940cc4f18b5fcb568774629
 protobuf_to_dict==0.1.0
 cachetools==1.1.6
 matplotlib
-ast
