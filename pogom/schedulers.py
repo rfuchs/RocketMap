@@ -524,8 +524,8 @@ class SpeedScan(HexSearch):
             for i in range(ring + (ring + 1 < self.step_limit)):
                 loc = get_new_coords(loc, xdist, WEST)
                 results.append((loc[0], loc[1], 0))
-
-        if self.args.geofence_file is not None: # Create geofence. This is very, very WIP!
+        # Create geofence. This is very, very WIP!
+        if self.args.geofence_file is not None:
             geofence = []
             with open(self.args.geofence_file) as f:
                 for line in f:
@@ -541,9 +541,6 @@ class SpeedScan(HexSearch):
                 if p.contains_point([result_x, result_y]):
                     results_geofenced.append((result_x, result_y, result_z))
             results = results_geofenced
-                
-            
-
         return [(step, (location[0], location[1], 0), 0, 0) for step, location in enumerate(results)]
 
     def getsize(self):
