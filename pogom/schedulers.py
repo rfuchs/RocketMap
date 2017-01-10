@@ -240,7 +240,7 @@ class HexSearch(BaseScheduler):
                 results = results[-2:] + results[:-2]
             else:
                 results = results[-7:] + results[:-7]
-                
+
         if self.args.geofence_file is not None:
             results = geofence(results, self.args.geofence_file)
 
