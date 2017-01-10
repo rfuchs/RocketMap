@@ -9,9 +9,9 @@ log = logging.getLogger(__name__)
 
 # Create geofence. This is very, very WIP!
 
-def geofence(results, args):
+def geofence(results, geofence_file):
     geofence = []
-    with open(args.geofence_file) as f:
+    with open(geofence_file) as f:
         for line in f:
             if len(line.strip()) == 0 or line.startswith('#'):
                 continue
