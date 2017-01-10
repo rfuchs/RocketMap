@@ -7,6 +7,7 @@ from ast import literal_eval
 
 log = logging.getLogger(__name__)
 
+
 # Create geofence. This is very, very WIP!
 
 def geofence(results, geofence_file):
