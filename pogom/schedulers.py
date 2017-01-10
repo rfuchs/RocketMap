@@ -48,11 +48,10 @@ from collections import Counter
 from queue import Empty
 from operator import itemgetter
 from datetime import datetime, timedelta
-from matplotlib.path import Path
-from ast import literal_eval
 from .transform import get_new_coords
 from .models import hex_bounds, Pokemon, SpawnPoint, ScannedLocation, ScanSpawnPoint
 from .utils import now, cur_sec, cellid, date_secs, equi_rect_distance
+from .geofence import geofence
 
 log = logging.getLogger(__name__)
 
@@ -524,23 +523,9 @@ class SpeedScan(HexSearch):
             for i in range(ring + (ring + 1 < self.step_limit)):
                 loc = get_new_coords(loc, xdist, WEST)
                 results.append((loc[0], loc[1], 0))
-        # Create geofence. This is very, very WIP!
+
         if self.args.geofence_file is not None:
-            geofence = []
-            with open(self.args.geofence_file) as f:
-                for line in f:
-                    if len(line.strip()) == 0 or line.startswith('#'):
-                        continue
-                    geofence.append(literal_eval(line.strip()))
-            log.info('Loaded %d geofence coordinates. Applying...', len(geofence))
-            log.info(geofence)
-            p = Path(geofence)
-            results_geofenced = []
-            for g in range(len(results)):
-                result_x, result_y, result_z = results[g]
-                if p.contains_point([result_x, result_y]):
-                    results_geofenced.append((result_x, result_y, result_z))
-            results = results_geofenced
+            results = geofence(results, self.args.geofence_file)
         return [(step, (location[0], location[1], 0), 0, 0) for step, location in enumerate(results)]
 
     def getsize(self):
