@@ -80,7 +80,9 @@ def get_args():
     parser.add_argument('-st', '--step-limit', help='Steps.', type=int,
                         default=12)
     parser.add_argument('-gf', '--geofence-file',
-                        help='Geofence file (only for -speed at the moment)')
+                        help='Geofence file (currently only for -speed and HexSearch)')
+    parser.add_argument('-fa', '--forbidden-area',
+                        help='File with coordinates defining area NOT to scan. Basically this is inverted geofence. Can be combined with -gf')
     parser.add_argument('-sd', '--scan-delay',
                         help='Time delay between requests in scan threads.',
                         type=float, default=10)

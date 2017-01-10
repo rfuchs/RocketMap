@@ -243,6 +243,8 @@ class HexSearch(BaseScheduler):
 
         if self.args.geofence_file is not None:
             results = geofence(results, self.args.geofence_file)
+        if self.args.forbidden_area is not None:
+            results = geofence(results, self.args.forbidden_area, forbidden=True)
 
         # Add the required appear and disappear times.
         locationsZeroed = []
@@ -529,6 +531,8 @@ class SpeedScan(HexSearch):
 
         if self.args.geofence_file is not None:
             results = geofence(results, self.args.geofence_file)
+        if self.args.forbidden_area is not None:
+            results = geofence(results, self.args.forbidden_area, forbidden=True)
         return [(step, (location[0], location[1], 0), 0, 0) for step, location in enumerate(results)]
 
     def getsize(self):
