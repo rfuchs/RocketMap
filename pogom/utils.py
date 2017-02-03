@@ -122,8 +122,8 @@ def get_args():
                               'HexSearch)'))
     parser.add_argument('-fa', '--forbidden-area',
                         help=('File with coordinates defining area NOT to ' +
-                              'scan. Basically this is inverted geofence. Can be ' +
-                              'combined with -gf'))
+                              'scan. Basically this is inverted geofence. ' +
+                              'Can be combined with -gf'))
     parser.add_argument('-sd', '--scan-delay',
                         help='Time delay between requests in scan threads.',
                         type=float, default=10)
