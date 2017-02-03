@@ -61,6 +61,7 @@ from .transform import get_new_coords
 from .models import (hex_bounds, Pokemon, SpawnPoint, ScannedLocation,
                      ScanSpawnPoint)
 from .utils import now, cur_sec, cellid, date_secs, equi_rect_distance
+from .altitude import get_altitude
 from .geofence import geofence
 
 log = logging.getLogger(__name__)
