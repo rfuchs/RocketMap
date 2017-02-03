@@ -18,9 +18,11 @@ def geofence(results, geofence_file, forbidden=False):
                 continue
             geofence.append(literal_eval(line.strip()))
         if forbidden:
-            log.info('Loaded %d geofence-forbidden coordinates. Applying...', len(geofence))
+            log.info('Loaded %d geofence-forbidden coordinates. ' +
+                     'Applying...', len(geofence))
         else:
-            log.info('Loaded %d geofence coordinates. Applying...', len(geofence))
+            log.info('Loaded %d geofence coordinates. Applying...',
+                     len(geofence))
     log.info(geofence)
     p = Path(geofence)
     results_geofenced = []
