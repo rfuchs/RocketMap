@@ -89,13 +89,18 @@ def switch_status_printer(display_type, current_page, mainlog,
         elif command.isdigit():
             current_page[0] = int(command)
             mainlog.handlers[0].setLevel(logging.CRITICAL)
-            display_type[0] = 'workers'
         elif command.lower() == 'f':
             mainlog.handlers[0].setLevel(logging.CRITICAL)
             display_type[0] = 'failedaccounts'
         elif command.lower() == 'h':
             mainlog.handlers[0].setLevel(logging.CRITICAL)
             display_type[0] = 'hashstatus'
+        elif command.lower() == 'l':
+            mainlog.handlers[0].setLevel(logging.CRITICAL)
+            display_type[0] = 'accountlevels'
+        elif command.lower() == 'w':
+            mainlog.handlers[0].setLevel(logging.CRITICAL)
+            display_type[0] = 'workers'
 
 
 # Thread to print out the status of each worker.
@@ -268,10 +273,65 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                         key_instance['maximum'],
                         key_instance['peak']))
 
+        elif display_type[0] == 'accountlevels':
+            # Get the terminal size.
+            width, height = terminalsize.get_terminal_size()
+            # Queue and overseer take 2 lines.  Switch message takes up 2
+            # lines.  Remove an extra 2 for things like screen status lines.
+            usable_height = height - 6
+            # Prevent people running terminals only 6 lines high from getting a
+            # divide by zero.
+            if usable_height < 1:
+                usable_height = 1
+
+            total_pages = math.ceil(
+                (len(threadStatus) - 1 - overseer_line_count) /
+                float(usable_height))
+
+            # Prevent moving outside the valid range of pages.
+            if current_page[0] > total_pages:
+                current_page[0] = total_pages
+            if current_page[0] < 1:
+                current_page[0] = 1
+
+            # Calculate which lines to print.
+            start_line = usable_height * (current_page[0] - 1)
+            end_line = start_line + usable_height
+            current_line = 1
+            status_text.append(
+                '----------------------------------------------------------')
+            status_text.append('ABSOLUTELY LIT THIS PAGE WORKS LOL')
+            status_text.append('Account Levels:')
+            status_text.append(
+                '----------------------------------------------------------')
+            # Find the longest username.
+            userlen = 4
+            for item in threadStatus:
+                if threadStatus[item]['type'] == 'Worker':
+                    userlen = max(userlen, len(threadStatus[item]['username']))
+
+            status = '{:' + str(userlen) + '} | {:3} | {:12}'
+            status_text.append(status.format('Username', 'Lvl', 'To Next',))
+
+            for item in sorted(threadStatus):
+                if(threadStatus[item]['type'] == 'Worker'):
+                    current_line += 1
+                    # Skip over items that don't belong on this page.
+                    if current_line < start_line:
+                        continue
+                    if current_line > end_line:
+                        break
+                    status_text.append(status.format(
+                        threadStatus[item]['username'],
+                        threadStatus[item]['level'],
+                        threadStatus[item]['untilNext'],
+                    ))
+
         # Print the status_text for the current screen.
         status_text.append((
             'Page {}/{}. Page number to switch pages. F to show on hold ' +
-            'accounts. H to show hash status. <ENTER> alone to switch ' +
+            'accounts. H to show hash status. L to show account levels/EXP. ' +
+            'W to show worker status. <ENTER> alone to switch ' +
             'between status and log view').format(current_page[0],
                                                   total_pages))
         # Clear the screen.
@@ -456,6 +516,8 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
             'noitems': 0,
             'skip': 0,
             'captcha': 0,
+            'level': 0,
+            'untilNext': 0,
             'username': '',
             'proxy_display': proxy_display,
             'proxy_url': proxy_url,
@@ -968,6 +1030,18 @@ def search_worker_thread(args, account_queue, account_failures,
                     log.error(status['message'])
                     time.sleep(scheduler.delay(status['last_scan_date']))
                     continue
+
+                for items in response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
+                    inventory_item_data = items['inventory_item_data']
+                    if 'player_stats' in inventory_item_data:
+                        level = inventory_item_data['player_stats']['level']
+                        currentExp = inventory_item_data['player_stats']['experience']
+                        nextLevel = inventory_item_data['player_stats']['next_level_xp']
+                        untilNext = nextLevel - currentExp
+
+                status['level'] = level
+                status['untilNext'] = untilNext
+                dbq.put((WorkerStatus, {0: WorkerStatus.db_format(status)}))
 
                 # Got the response, check for captcha, parse it out, then send
                 # todo's to db/wh queues.

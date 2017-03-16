@@ -129,6 +129,19 @@ def get_args():
     parser.add_argument('-enc', '--encounter',
                         help='Start an encounter to gather IVs and moves.',
                         action='store_true', default=False)
+    parser.add_argument('-ditto', '--ditto',
+                        help='Catch Pidgey, Rattata, Zubat, Magikarp, Sentret, HootHoot, Yanma and check if it\'s Ditto. Requires 3 API calls per Ditto-Mon',
+                        action='store_true', default=False)
+    parser.add_argument('-spin', '--pokestop-spinning',
+                        help='Spin stops when in range. **Conflicts with -tut!**',
+                        action='store_true', default=False)
+    parser.add_argument('-lure', '--setLure',
+                        help='Set lures on open Pokestops',
+                        action='store_true', default=False)
+    parser.add_argument('-lureFence', '--lureFence',
+                        help='Choose area for Pokestop luring')
+    parser.add_argument('-nolureFence', '--nolureFence',
+                        help='Choose area that CANNOT have Pokestop luring')
     parser.add_argument('-cs', '--captcha-solving',
                         help='Enables captcha solving.',
                         action='store_true', default=False)
@@ -387,7 +400,7 @@ def get_args():
                         help='Key for hash server')
     parser.add_argument('-tut', '--complete-tutorial', action='store_true',
                         help=("Complete ToS and tutorial steps on accounts " +
-                              "if they haven't already."),
+                              "if they haven't already. **Conflicts with -spin**"),
                         default=False)
     parser.add_argument('-novc', '--no-version-check', action='store_true',
                         help='Disable API version check.',

@@ -25,6 +25,11 @@ from base64 import b64encode
 from cachetools import TTLCache
 from cachetools import cached
 from timeit import default_timer
+# BALLS lol
+from random import random
+# for geofence
+from matplotlib.path import Path
+from ast import literal_eval
 
 from . import config
 from .utils import get_pokemon_name, get_pokemon_rarity, get_pokemon_types, \
@@ -1682,6 +1687,29 @@ def hex_bounds(center, steps=None, radius=None):
     return (n, e, s, w)
 
 
+def geofence(step_location, geofence_file, forbidden=False):
+    geofence = []
+    with open(geofence_file) as f:
+        for line in f:
+            if len(line.strip()) == 0 or line.startswith('#'):
+                continue
+            geofence.append(literal_eval(line.strip()))
+        # if forbidden:
+            # log.info('Loaded %d geofence-forbidden coordinates. ' +
+                    #  'Applying...', len(geofence))
+        # else:
+            # log.info('Loaded %d geofence coordinates. Applying...',
+                    # len(geofence))
+    # log.info(geofence)
+    p = Path(geofence)
+    step_location_geofenced = []
+    result_x, result_y, result_z = step_location
+    if p.contains_point([step_location[0], step_location[1]]) ^ forbidden:
+        step_location_geofenced.append((result_x, result_y, result_z))
+        # log.warning('FOUND IN THE GEOFENCE, LURING: %s, %s', result_x, result_y)
+    return step_location_geofenced
+
+
 # todo: this probably shouldn't _really_ be in "models" anymore, but w/e.
 def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
               api, now_date, account):
@@ -1690,6 +1718,10 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     gyms = {}
     skipped = 0
     stopsskipped = 0
+    alreadyLeveled = False
+    USELESS = [101, 102, 103, 104, 201, 202, 602, 603, 604, 701, 702, 703, 704, 705]
+    dittomons = [16, 19, 41, 129]
+    forbidden = False
     forts = []
     wild_pokemon = []
     nearby_pokemon = []
@@ -1713,6 +1745,17 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
         wild_pokemon += cell.get('wild_pokemons', [])
 
         forts += cell.get('forts', [])
+
+    for items in map_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
+        inventory_item_data = items['inventory_item_data']
+        if 'player_stats' in inventory_item_data:
+            level = inventory_item_data['player_stats']['level']
+            currentExp = inventory_item_data['player_stats']['experience']
+            nextLevel = inventory_item_data['player_stats']['next_level_xp']
+
+        if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] == 501:
+            totalDisks = inventory_item_data['item'].get('count', 0)
+            log.debug('@@@LURE@@@ FOUND LURES: %s IN TOTAL', totalDisks)
 
     # If there are no wild or nearby Pokemon . . .
     if not wild_pokemon and not nearby_pokemon:
@@ -1904,6 +1947,216 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     'gender': pokemon_info['pokemon_display']['gender'],
                 })
 
+                pokeball_count = 0
+                greatball_count = 0
+                ultraball_count = 0
+                inventory = encounter_result['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']
+                for item in inventory:
+                    inventory_item_data = item['inventory_item_data']
+
+                    if not inventory_item_data:
+                        continue
+
+                    if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 1:
+                        pokeball_count = inventory_item_data['item'].get('count', 0)
+                        # log.info('@@@INVENTORY@@@ there are %s pokeballs', pokeball_count)
+                    elif 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 2:
+                        greatball_count = inventory_item_data['item'].get('count', 0)
+                        # log.info('@@@INVENTORY@@@ there are %s pokeballs', greatball_count)
+                    elif 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 3:
+                        ultraball_count = inventory_item_data['item'].get('count', 0)
+                        # log.info('@@@INVENTORY@@@ there are %s pokeballs', ultraball_count)
+
+                if ultraball_count == 0 and greatball_count == 0 and pokeball_count == 0:
+                    log.info('***CATCHING DUDES***No balls! Not gonna try and catch')
+                    catch_pid = 'blueballs'
+                # Now catch it if it's a ditto-mon (16, 19, 21, 41, 129)
+                catch_pid = None
+                if args.ditto is True:
+                    if p['pokemon_data']['pokemon_id'] in dittomons:
+                        log.info('***CATCHING DUDES***Ditto pokemon found, catching - EncID:%s', b64encode(str(p['encounter_id'])))
+                        current_ball = 1
+                        while catch_pid is None:
+                            time.sleep(2.10)
+                            random_throw = 1.5 + 0.25 * random()
+                            random_spin = 0.8 + 0.1 * random()
+                            req = api.create_request()
+                            catch_result = req.check_challenge()
+                            catch_result = req.get_hatched_eggs()
+                            catch_result = req.get_inventory()
+                            catch_result = req.check_awarded_badges()
+                            catch_result = req.download_settings()
+                            catch_result = req.get_buddy_walked()
+                            catch_result = req.catch_pokemon(encounter_id=p['encounter_id'],
+                                                             pokeball=current_ball,
+                                                             normalized_reticle_size=random_throw,
+                                                             spawn_point_id=p['spawn_point_id'],
+                                                             hit_pokemon=1,
+                                                             spin_modifier=random_spin,
+                                                             normalized_hit_position=1.0)
+                            catch_result = req.call()
+                            # REMEMBER TO CHECK FOR CAPTCHAS WITH EVERY REQUEST
+                            captcha_url = catch_result['responses']['CHECK_CHALLENGE']['challenge_url']
+                            if len(captcha_url) > 1:
+                                log.info('fuck, captcha\'d, **DURING CATCHING** now return Bad Scan so that this can be re-scanned')
+                                return {
+                                    'count': 0,
+                                    'gyms': gyms,
+                                    'spawn_points': spawn_points,
+                                    'bad_scan': True,
+                                }
+                            try:
+                                catch_result['responses']['CATCH_POKEMON']['status']
+                            except Exception as e:
+                                log.warning('***CATCHING DUDES***Catch request failed: %s', e)
+                                catch_result = False
+                            if not catch_result:
+                                log.info('***CATCHING DUDES***Catch request failed!! Waiting 10 then trying to catch again')
+                                catch_response = 2
+                                time.sleep(10)
+                            else:
+                                # log.warning('***CATCHING DUDES*** IMPORDANT %s', catch_result['responses']['CATCH_POKEMON']['status'])
+                                catch_response = catch_result['responses']['CATCH_POKEMON']['status']
+                            if catch_response is 1:
+                                log.info('***CATCHING DUDES***Catch SUCC-cess')
+                                awardedExp = 0
+                                for number in catch_result['responses']['CATCH_POKEMON']['capture_award']['xp']:
+                                    awardedExp = awardedExp + number
+                                log.warning('$$$PLAYERSTATS$$$ xp is : %s', awardedExp)
+                                oldExp = currentExp
+                                currentExp = currentExp + awardedExp
+                                log.warning('$$$PLAYERSTATS$$$ Caught pokemon so increased XP by %s, old XP was, %s now is %s, next level at %s', awardedExp, oldExp, currentExp, nextLevel)
+                                if currentExp == nextLevel or currentExp > nextLevel:
+                                    log.warning('$$$PLAYERSTATS$$$ LEVEL UP DETECTED OH SHIT')
+                                    alreadyLeveled = True
+                                    levelup = level + 1
+                                    levelStatus = None
+                                    while levelStatus is None:
+                                        req = api.create_request()
+                                        levelResponse = req.level_up_rewards(level=levelup)
+                                        time.sleep(1)
+                                        levelResponse = req.call()
+                                        # log.warning('$$$LEVELUP$$$ %s', levelResponse['responses'])
+                                        levelStatus = levelResponse['responses']['LEVEL_UP_REWARDS']['result']
+                                        if levelStatus == 0:
+                                            log.warning('$$$PLAYERSTATS$$$ SHIT IT\'S UNSET WHAT DOES THAT MEAN')
+                                        elif levelStatus == 1:
+                                            log.warning('$$$PLAYERSTATS$$$ Level up rewards SUCC CESS')
+                                        elif levelStatus == 2:
+                                            log.warning('$$$PLAYERSTATS$$$ Level up reward ALREADY TAKEN the code is BROKE')
+                                        else:
+                                            log.warning('$$$PLAYERSTATS$$$ UNKNOWN, SHIT IS BLANK')
+                                catch_pid = catch_result['responses']['CATCH_POKEMON']['captured_pokemon_id']
+                            #    log.info('***CATCHING DUDES***PID:%s', catch_pid)
+                            elif catch_response is 3:
+                                catch_pid = 'ran'
+                                log.info('***CATCHING DUDES***Pokemon ran!')
+                            elif catch_response is 2:
+                                if current_ball == 1:
+                                    pokeball_count = pokeball_count - 1
+                                elif current_ball == 2:
+                                    greatball_count = greatball_count - 1
+                                else:
+                                    ultraball_count = ultraball_count - 1
+                                log.info('***CATCHING DUDES***Catch failed, balling up if possible - no razz tho')
+                                if ultraball_count > 0:
+                                    current_ball = 3
+                                elif ultraball_count == 0 and greatball_count > 0:
+                                    current_ball = 2
+                                elif ultraball_count == 0 and greatball_count == 0 and pokeball_count > 0:
+                                    current_ball = 1
+                                else:
+                                    log.info('***CATCHING DUDES***Out of pokeballs!')
+                                    catch_pid = 'blueballs'
+                            else:
+                                continue
+
+                    if catch_pid is 'ran':
+                        log.info('***CATCHING DUDES***Since he gone, gonna requeue (lol jk im not that good yet)')
+                    elif catch_pid is 'blueballs':
+                        log.info('***CATCHING DUDES***Get more pokeballs! Queued up (lol jk im jk lol)')
+                    else:
+                        # check inventory again and see if ditto - wait a second first to avoid throttling
+                        time.sleep(10)  # lol
+                        req = api.create_request()
+                        new_inv_get = req.check_challenge()
+                        new_inv_get = req.get_hatched_eggs()
+                        new_inv_get = req.get_inventory()
+                        new_inv_get = req.check_awarded_badges()
+                        new_inv_get = req.download_settings()
+                        new_inv_get = req.get_buddy_walked()
+                        new_inv_get = req.call()
+                        # https://github.com/norecha/PokeInventory/blob/master/inventory.py
+                        inventory = new_inv_get['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']
+                        # REMEMBER TO CHECK FOR CAPTCHAS WITH EVERY REQUEST
+                        captcha_url = new_inv_get['responses']['CHECK_CHALLENGE']['challenge_url']
+                        if len(captcha_url) > 1:
+                            log.info('fuck, captcha\'d, **DURING DITTO CHECK** now return Bad Scan so that this can be re-scanned')
+                            return {
+                                'count': 0,
+                                'gyms': gyms,
+                                'spawn_points': spawn_points,
+                                'bad_scan': True,
+                            }
+
+                        for item in inventory:
+                            inventory_item_data = item['inventory_item_data']
+
+                            if not inventory_item_data:
+                                continue
+
+                            if 'pokemon_data' in inventory_item_data:
+                                pokemonItem = inventory_item_data['pokemon_data']
+                                #    log.info('***CATCHING DUDES***dump-PID%s:%s, the pokemon[\'id\'] is %s', index, pokemon['pokemon_id'], pokemon['id'])
+
+                                if 'is_egg' in pokemonItem and pokemonItem['is_egg']:
+                                    continue
+
+                                if pokemonItem['id'] == catch_pid:
+                                    # this pokemonItem is the most recent caught - is it ditto-mon
+                                    if pokemonItem['pokemon_id'] == 132:
+                                        log.info('***CATCHING DUDES***DITTO FOUND OH SHIT')
+                                        pokemon[p['encounter_id']].update({
+                                            'pokemon_id': '132',
+                                            'previous_id': p['pokemon_data']['pokemon_id']
+                                        })
+                                        # keep it dittos are lit
+                                        break
+                                    else:
+                                        log.info('***CATCHING DUDES***It\'s not a ditto')
+                                        pokemon[p['encounter_id']].update({
+                                            'previous_id': p['pokemon_data']['pokemon_id']
+                                        })
+                                        # destroy it
+                                        release_get_result = 0  # lol
+                                        while release_get_result != 1:
+                                            time.sleep(10)  # lol
+                                            req = api.create_request()
+                                            release_get = req.check_challenge()
+                                            release_get = req.get_hatched_eggs()
+                                            release_get = req.get_inventory()
+                                            release_get = req.check_awarded_badges()
+                                            release_get = req.download_settings()
+                                            release_get = req.get_buddy_walked()
+                                            release_get = req.release_pokemon(pokemon_id=pokemonItem['id'])
+                                            release_get = req.call()
+                                            release_get_result = release_get['responses']['RELEASE_POKEMON']['result']
+                                            # REMEMBER TO CHECK FOR CAPTCHAS WITH EVERY REQUEST
+                                            captcha_url = release_get['responses']['CHECK_CHALLENGE']['challenge_url']
+                                            if len(captcha_url) > 1:
+                                                log.info('fuck, captcha\'d, **DURING DITTO CHECK** now return Bad Scan so that this can be re-scanned')
+                                                return {
+                                                    'count': 0,
+                                                    'gyms': gyms,
+                                                    'spawn_points': spawn_points,
+                                                    'bad_scan': True,
+                                                }
+                                        if release_get_result == 1:
+                                            log.info('***CATCHING DUDES***Non-ditto disposed')
+                                            break
+                                        else:
+                                            log.info('***CATCHING DUDES***Non-ditto disposing failed - trying again in 10 sec')
+
             if args.webhooks:
 
                 wh_poke = pokemon[p['encounter_id']].copy()
@@ -1932,7 +2185,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                      datetime(1970, 1, 1)).total_seconds())) for f in query]
 
         # Complete tutorial with a Pokestop spin
-        if args.complete_tutorial and not (len(captcha_url) > 1):
+        if args.complete_tutorial and not (len(captcha_url) > 1) and args.pokestop_spinning is False:
             if config['parse_pokestops']:
                 tutorial_pokestop_spin(
                     api, map_dict, forts, step_location, account)
@@ -1943,10 +2196,263 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
         for f in forts:
             if config['parse_pokestops'] and f.get('type') == 1:  # Pokestops.
+                distance = 0.03
+                egg = None
+                bater = None
+                breakableId = None
+                unbreakableId = None
+                monID = None
+                monCount = 0
+                usedIncubatorCount = 0
+                totalDisks = 0
+                if in_radius((f['latitude'], f['longitude']), step_location, distance) and args.pokestop_spinning is True:
+                    spin_result = None
+                    req = api.create_request()
+                    log.warning('Pokestop ID: %s', f['id'])
+                    while spin_result is None:
+                        spin_response = req.fort_search(fort_id=f['id'],
+                                                        fort_latitude=f['latitude'],
+                                                        fort_longitude=f['longitude'],
+                                                        player_latitude=step_location[0],
+                                                        player_longitude=step_location[1]
+                                                        )
+                        spin_response = req.check_challenge()
+                        spin_response = req.get_hatched_eggs()
+                        spin_response = req.get_inventory()
+                        spin_response = req.check_awarded_badges()
+                        spin_response = req.download_settings()
+                        spin_response = req.get_buddy_walked()
+                        time.sleep(10)
+                        spin_response = req.call()
+                        # REMEMBER TO CHECK FOR CAPTCHAS WITH EVERY REQUEST
+                        captcha_url = spin_response['responses']['CHECK_CHALLENGE']['challenge_url']
+                        if len(captcha_url) > 1:
+                            log.info('fuck, captcha\'d, now return Bad Scan so that this can be re-scanned')
+                            return {
+                                'count': 0,
+                                'gyms': gyms,
+                                'spawn_points': spawn_points,
+                                'bad_scan': True,
+                                'captcha': True,
+                                'failed': 'pokestop'
+                            }
+                        if spin_response['responses']['FORT_SEARCH']['result'] is 1:
+                            log.info('&&&SPINNING&&&Spin stop attempt success')
+                            spin_result = 1
+                            awardedExp = spin_response['responses']['FORT_SEARCH']['experience_awarded']
+                            log.warning('$$$PLAYERSTATS$$$ xp is : %s', awardedExp)
+                            oldExp = currentExp
+                            currentExp = currentExp + awardedExp
+                            log.warning('$$$PLAYERSTATS$$$ Spun pokestop so increased XP by %s, old XP was, %s now is %s, next level at %s', awardedExp, oldExp, currentExp, nextLevel)
+                            if currentExp == nextLevel or currentExp > nextLevel:
+                                log.warning('$$$PLAYERSTATS$$$ LEVEL UP DETECTED OH SHIT')
+                                levelup = level + 1
+                                levelStatus = None
+                                while levelStatus is None:
+                                    if alreadyLeveled is True:
+                                        log.warning('$$$PLAYERSTATS$$$ But actually we already leveled up fam. Nvm.')
+                                        break
+                                    req = api.create_request()
+                                    levelResponse = req.level_up_rewards(level=levelup)
+                                    time.sleep(1)
+                                    levelResponse = req.call()
+                                    if levelResponse['responses']['LEVEL_UP_REWARDS']['Result']:
+                                        levelStatus = levelResponse['responses']['LEVEL_UP_REWARDS']['Result']
+                                        if levelStatus == 0:
+                                            log.warning('$$$PLAYERSTATS$$$ SHIT IT\'S UNSET WHAT DOES THAT MEAN')
+                                        elif levelStatus == 1:
+                                            log.warning('$$$PLAYERSTATS$$$ Level up SUCC CESS - Now level %s', levelup)
+                                        elif levelStatus == 2:
+                                            log.warning('$$$PLAYERSTATS$$$ Level up reward ALREADY TAKEN the code is BROKE')
+                                        else:
+                                            log.warning('$$$PLAYERSTATS$$$ UNKNOWN, SHIT IS BLANK')
+                                    else:
+                                        log.warning('$$$PLAYERSTATS$$$ LEVEL UP FAILED! Level up has already been done')
+                                        levelStatus = 0
+                        elif spin_response['responses']['FORT_SEARCH']['result'] is 2:
+                            log.info('&&&SPINNING&&&Stop is out of range - this formula needs fixing')
+                            spin_result = 'Failed'
+                        elif spin_response['responses']['FORT_SEARCH']['result'] is 3:
+                            log.info('&&&SPINNING&&&Already spun this stop - check for this one day')
+                            spin_result = 'Failed'
+                        elif spin_response['responses']['FORT_SEARCH']['result'] is 4:
+                            log.info('&&&SPINNING&&&Inventory is full (idk how you managed this one)')
+                            spin_result = 'Failed'
+                        elif spin_response['responses']['FORT_SEARCH']['result'] is 5:
+                            log.info('&&&SPINNING&&&Maximum spun stops for the day - idk how you managed this either')
+                            spin_result = 'Failed'
+                        else:
+                            log.info('&&&SPINNING&&&No result set - weird error - abort mission')
+                            spin_result = 'Failed'
+                        inventory = spin_response['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']
+                        for item in inventory:
+                            inventory_item_data = item['inventory_item_data']
+                            if not inventory_item_data:
+                                continue
+                            if 'pokemon_data' in inventory_item_data:
+                                pokememe = inventory_item_data['pokemon_data']
+                                if 'is_egg' in pokememe and pokememe['is_egg'] and 'egg_incubator_id' not in pokememe:
+                                    log.warning('###EGGS### FOUND AN EGG GONNA BATE IT: %s', pokememe['id'])
+                                    egg = pokememe['id']
+                                else:
+                                    log.warning('###EGGS### FOUND A MON WHAT EVER: %s', pokememe['id'])
+                                    monCount += 1
+                                    monID = pokememe['id']
+                            if 'egg_incubators' in inventory_item_data:
+                                incubators = inventory_item_data['egg_incubators']
+                                count = -1
+                                for incubator in incubators:
+                                    itemid = inventory_item_data['egg_incubators']['egg_incubator'][count]['item_id']
+                                    count += 1
+                                    log.warning('###EGGS### THE ITEM ID %s', itemid)
+                                    if 'pokemon_id' in inventory_item_data['egg_incubators']['egg_incubator'][count]:
+                                        log.warning('###EGGS### FOUND A USED BATOR %s', itemid)
+                                        usedIncubatorCount += 1
+                                    else:
+                                        if itemid == 901:
+                                            unbreakableId = inventory_item_data['egg_incubators']['egg_incubator'][count]['id']
+                                            log.warning('###EGGS### HAVE A BATOR GONNA BATE IT: %s', unbreakableId)
+                                        else:
+                                            breakableId = inventory_item_data['egg_incubators']['egg_incubator'][count]['id']
+                                            log.warning('###EGGS### HAVE A breakorRRR GONNA breaGk IT: %s', breakableId)
+
+                            if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 1:
+                                if inventory_item_data['item'].get('count', 0) > 200:
+                                    log.info('@@@INVENTORY@@@ we have 200+ balls! Trash 69 and move on')
+                                    trash_status = None
+                                    while trash_status is None:
+                                        req = api.create_request()
+                                        trash_result = req.check_challenge()
+                                        trash_result = req.get_hatched_eggs()
+                                        trash_result = req.get_inventory()
+                                        trash_result = req.check_awarded_badges()
+                                        trash_result = req.download_settings()
+                                        trash_result = req.get_buddy_walked()
+                                        trash_result = req.recycle_inventory_item(item_id=inventory_item_data['item']['item_id'],
+                                                                                  count=69)
+                                        time.sleep(4.20)
+                                        trash_result = req.call()
+                                        # REMEMBER TO CHECK FOR CAPTCHAS WITH EVERY REQUEST
+                                        captcha_url = trash_result['responses']['CHECK_CHALLENGE']['challenge_url']
+                                        if len(captcha_url) > 1:
+                                            log.info('fuck, captcha\'d, **DURING ITEM TRASHING** now return Bad Scan so that this can be re-scanned')
+                                            return {
+                                                'count': 0,
+                                                'gyms': gyms,
+                                                'spawn_points': spawn_points,
+                                                'bad_scan': True,
+                                                'captcha': True,
+                                                'failed': 'trashing'
+                                            }
+                                        # log.info('@@@INVENTORY@@@ %s remaining of ID: %s', trash_result['responses']['RECYCLE_INVENTORY_ITEM']['new_count'], inventory_item_data['item']['item_id'])
+                                        if trash_result['responses']['RECYCLE_INVENTORY_ITEM']['result'] is 1:
+                                            log.info('@@@INVENTORY@@@ recycle success')
+                                            trash_status = 1
+                                        elif trash_result['responses']['RECYCLE_INVENTORY_ITEM']['result'] is 2:
+                                            log.info('@@@INVENTORY@@@ not enough items to trash - parsing messed up')
+                                            trash_status = 1
+                                        elif trash_result['responses']['RECYCLE_INVENTORY_ITEM']['result'] is 3:
+                                            trash_status = 1
+                                            log.info('@@@INVENTORY@@@ tried to recycle incubator - parsing messed up again')
+                                        else:
+                                            log.warning('trashing failed - panic')
+                                            trash_status = 1
+
+                            if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] in USELESS:
+                                if inventory_item_data['item'].get('count', 0) > 10:
+                                    log.info('@@@INVENTORY@@@ too many potions, recyling all, subtract 7')
+                                    totalPotions = inventory_item_data['item'].get('count', 0)
+                                    trashingPotions = totalPotions - 7
+                                    trash_status = None
+                                    while trash_status is None:
+                                        req = api.create_request()
+                                        trash_result = req.check_challenge()
+                                        trash_result = req.get_hatched_eggs()
+                                        trash_result = req.get_inventory()
+                                        trash_result = req.check_awarded_badges()
+                                        trash_result = req.download_settings()
+                                        trash_result = req.get_buddy_walked()
+                                        trash_result = req.recycle_inventory_item(item_id=inventory_item_data['item']['item_id'],
+                                                                                  count=trashingPotions)
+                                        time.sleep(4.20)
+                                        trash_result = req.call()
+                                        # REMEMBER TO CHECK FOR CAPTCHAS WITH EVERY REQUEST
+                                        captcha_url = trash_result['responses']['CHECK_CHALLENGE']['challenge_url']
+                                        if len(captcha_url) > 1:
+                                            log.info('fuck, captcha\'d, **DURING ITEM TRASHING** now return Bad Scan so that this can be re-scanned')
+                                            return {
+                                                'count': 0,
+                                                'gyms': gyms,
+                                                'spawn_points': spawn_points,
+                                                'bad_scan': True,
+                                                'captcha': True,
+                                                'failed': 'trashing'
+                                            }
+                                        # log.info('@@@INVENTORY@@@ %s remaining of ID: %s', trash_result['responses']['RECYCLE_INVENTORY_ITEM']['new_count'], inventory_item_data['item']['item_id'])
+                                        if trash_result['responses']['RECYCLE_INVENTORY_ITEM']['result'] is 1:
+                                            log.info('@@@INVENTORY@@@ recycle success')
+                                            trash_status = 1
+                                        elif trash_result['responses']['RECYCLE_INVENTORY_ITEM']['result'] is 2:
+                                            log.info('@@@INVENTORY@@@ not enough items to trash - parsing messed up')
+                                            trash_status = 1
+                                        elif trash_result['responses']['RECYCLE_INVENTORY_ITEM']['result'] is 3:
+                                            trash_status = 1
+                                            log.info('@@@INVENTORY@@@ tried to recycle incubator - parsing messed up again')
+                                        else:
+                                            log.warning('trashing failed - panic')
+                                            trash_status = 1
+
+                        if breakableId is not None and egg is not None or unbreakableId is not None and egg is not None:
+                            if breakableId is None:
+                                bater = unbreakableId
+                            else:
+                                bater = breakableId
+
+                            egg_status = None
+                            while egg_status is None:
+                                req = api.create_request()
+                                egg_request = req.use_item_egg_incubator(item_id=bater,
+                                                                         pokemon_id=egg)
+                                time.sleep(4.20)
+                                egg_request = req.call()
+                                egg_status = egg_request['responses']['USE_ITEM_EGG_INCUBATOR']['result']
+                                if egg_status is 0:
+                                    log.warning('###EGG### Server responded with "unset" - what the fukc')
+                                elif egg_status is 1:
+                                    log.info('###EGG### Egg incubation success - egg set')
+                                    breakableId = None
+                                    unbreakableId = None
+                                    break
+                                elif egg_status is 2:
+                                    log.warning('###EGG### Incubator not found! Parsing issues with above!')
+                                elif egg_status is 3:
+                                    log.warning('###EGG### Egg not found! Parsing issues with above! Egg: %s', egg)
+                                elif egg_status is 4:
+                                    log.warning('###EGG### Given ID does not point to EGG! Parsing issues!')
+                                elif egg_status is 5:
+                                    log.warning('###EGG### Incubator in use! Still Parsing issues!!')
+                                elif egg_status is 6:
+                                    log.warning('###EGG### Egg already incubating! These parsing Issues!!')
+                                elif egg_status is 7:
+                                    log.warning('###EGG### This incubator is broken! Somehow used old inventory? PARSING')
+                        if monCount > 69:
+                            release_status = None
+                            while release_status is None:
+                                req = api.create_request()
+                                release_request = req.release_pokemon(pokemon_id=monID)
+                                time.sleep(4.20)
+                                release_request = req.call()
+                                release_status = release_request['responses']['RELEASE_POKEMON']['result']
+                                if release_status == 1:
+                                    log.info('###EGG### Excess pokemon removed')
+                                    break
+                                else:
+                                    log.warning('###EGG### Excess pokemon removal failed - trying again in 10 sec')
+
                 if 'active_fort_modifier' in f:
                     lure_expiration = (datetime.utcfromtimestamp(
                         f['last_modified_timestamp_ms'] / 1000.0) +
-                        timedelta(minutes=args.lure_duration))
+                        timedelta(minutes=30))
                     active_fort_modifier = f['active_fort_modifier']
                     if args.webhooks and args.webhook_updates_only:
                         wh_update_queue.put(('pokestop', {
@@ -1961,6 +2467,58 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                             'active_fort_modifier': active_fort_modifier
                         }))
                 else:
+                    distance = 0.03
+                    if in_radius((f['latitude'], f['longitude']), step_location, distance):
+                        if args.setLure is True:
+                            if args.lureFence is not None:
+                                allowed = geofence(step_location, args.lureFence)
+                                log.warning('FENCE: %s', allowed)
+                                if allowed == []:
+                                    log.warning('STOP IS FORBIDDEN')
+                                    forbidden = True
+                                else:
+                                    log.warning('STOP IS GOOD')
+                                    forbidden = False
+                            if args.nolureFence is not None:
+                                forbidden = geofence(step_location, args.nolureFence, forbidden=True)
+                                log.warning('DI-ALLOWFENCE: %s', forbidden)
+                                if forbidden == []:
+                                    log.warning('STOP IS GOOD')
+                                    forbidden = False
+                                else:
+                                    forbidden = True
+                                    log.warning('STOP IS FORBIDDEN')
+
+                            lure_status = None
+                            lure_id = 501
+                            if totalDisks == 0:
+                                log.warning('FINNA TRYNA LURE BUT I AINT GOT NONE')
+                                forbidden = True
+                            while lure_status is None and totalDisks > 0 and forbidden is False:
+                                req = api.create_request()
+                                lure_request = req.add_fort_modifier(modifier_type=lure_id,
+                                                                     fort_id=f['id'],
+                                                                     player_latitude=step_location[0],
+                                                                     player_longitude=step_location[1])
+                                time.sleep(4.20)
+                                lure_request = req.call()
+                                log.warning('@@@LURE RESPONSE@@@ %s', lure_request['responses'])
+                                lure_status = lure_request['responses']['ADD_FORT_MODIFIER']['result']
+                                if lure_status is 0:
+                                    log.warning('███Lure was unset! Shiet son███')
+                                    lure_status = 'Failed'
+                                elif lure_status is 1:
+                                    log.warning('███Lure successfully set! holy SHEIT███')
+                                    lure_status = 'Win'
+                                elif lure_status is 2:
+                                    log.warning('███Stop already has lure!!███')
+                                    lure_status = 'Panic'
+                                elif lure_status is 3:
+                                    log.warning('███Out of range to set lure! (how?)███')
+                                    lure_status = 'Range'
+                                elif lure_status is 4:
+                                    log.warning('███Account has no lures!███')
+                                    lure_status = 'empty'
                     lure_expiration, active_fort_modifier = None, None
 
                 # Send all pokestops to webhooks.
@@ -2621,4 +3179,3 @@ def database_migrate(db, old_ver):
             migrate(
                 migrator.add_index('pokestop', ('last_updated',), False)
             )
-        log.info('Schema upgrade complete.')
