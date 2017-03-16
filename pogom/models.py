@@ -2204,7 +2204,6 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 monID = None
                 monCount = 0
                 usedIncubatorCount = 0
-                totalDisks = 0
                 if in_radius((f['latitude'], f['longitude']), step_location, distance) and args.pokestop_spinning is True:
                     spin_result = None
                     req = api.create_request()
