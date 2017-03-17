@@ -1912,6 +1912,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 if len(captcha_url) > 1:  # Throw warning but finish parsing
                     log.debug('Account encountered a reCaptcha.')
 
+            previous_id = p['pokemon_data']['pokemon_id']
+
             pokemon[p['encounter_id']] = {
                 'encounter_id': b64encode(str(p['encounter_id'])),
                 'spawnpoint_id': p['spawn_point_id'],
@@ -1926,7 +1928,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 'move_2': None,
                 'height': None,
                 'weight': None,
-                'gender': None
+                'gender': None,
             }
 
             if (encounter_result is not None and 'wild_pokemon'
@@ -2118,15 +2120,11 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                         log.info('***CATCHING DUDES***DITTO FOUND OH SHIT')
                                         pokemon[p['encounter_id']].update({
                                             'pokemon_id': '132',
-                                            'previous_id': p['pokemon_data']['pokemon_id']
                                         })
                                         # keep it dittos are lit
                                         break
                                     else:
                                         log.info('***CATCHING DUDES***It\'s not a ditto')
-                                        pokemon[p['encounter_id']].update({
-                                            'previous_id': p['pokemon_data']['pokemon_id']
-                                        })
                                         # destroy it
                                         release_get_result = 0  # lol
                                         while release_get_result != 1:
@@ -2168,7 +2166,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     'verified': SpawnPoint.tth_found(sp),
                     'seconds_until_despawn': seconds_until_despawn,
                     'spawn_start': start_end[0],
-                    'spawn_end': start_end[1]
+                    'spawn_end': start_end[1],
+                    'previous_id': previous_id
                 })
                 wh_update_queue.put(('pokemon', wh_poke))
 
