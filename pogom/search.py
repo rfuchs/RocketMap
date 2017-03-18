@@ -300,7 +300,6 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
             current_line = 1
             status_text.append(
                 '----------------------------------------------------------')
-            status_text.append('ABSOLUTELY LIT THIS PAGE WORKS LOL')
             status_text.append('Account Levels:')
             status_text.append(
                 '----------------------------------------------------------')
@@ -310,8 +309,8 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                 if threadStatus[item]['type'] == 'Worker':
                     userlen = max(userlen, len(threadStatus[item]['username']))
 
-            status = '{:' + str(userlen) + '} | {:3} | {:12}'
-            status_text.append(status.format('Username', 'Lvl', 'To Next',))
+            status = '{:' + str(userlen) + '} | {:3} | {:9} | {:5} | {:5}'
+            status_text.append(status.format('Username', 'Lvl', 'To Next', 'Lures', 'Balls'))
 
             for item in sorted(threadStatus):
                 if(threadStatus[item]['type'] == 'Worker'):
@@ -325,6 +324,8 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                         threadStatus[item]['username'],
                         threadStatus[item]['level'],
                         threadStatus[item]['untilNext'],
+                        threadStatus[item]['lures'],
+                        threadStatus[item]['balls']
                     ))
 
         # Print the status_text for the current screen.
@@ -518,6 +519,8 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
             'captcha': 0,
             'level': 0,
             'untilNext': 0,
+            'lures': 0,
+            'balls': 0,
             'username': '',
             'proxy_display': proxy_display,
             'proxy_url': proxy_url,
@@ -1031,6 +1034,11 @@ def search_worker_thread(args, account_queue, account_failures,
                     time.sleep(scheduler.delay(status['last_scan_date']))
                     continue
 
+                totalDisks = 0
+                pokeball_count = 0
+                greatball_count = 0
+                ultraball_count = 0
+                totalBalls = 0
                 for items in response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
                     inventory_item_data = items['inventory_item_data']
                     if 'player_stats' in inventory_item_data:
@@ -1038,9 +1046,21 @@ def search_worker_thread(args, account_queue, account_failures,
                         currentExp = inventory_item_data['player_stats']['experience']
                         nextLevel = inventory_item_data['player_stats']['next_level_xp']
                         untilNext = nextLevel - currentExp
+                    if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] == 501:
+                        totalDisks = inventory_item_data['item'].get('count', 0)
+                        # log.debug('@@@LURE@@@ FOUND LURES: %s IN TOTAL', totalDisks)
+                    if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 1:
+                        pokeball_count = inventory_item_data['item'].get('count', 0)
+                    if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 2:
+                        greatball_count = inventory_item_data['item'].get('count', 0)
+                    if 'item' in inventory_item_data and inventory_item_data['item']['item_id'] is 3:
+                        ultraball_count = inventory_item_data['item'].get('count', 0)
 
+                totalBalls = pokeball_count + greatball_count + ultraball_count
                 status['level'] = level
                 status['untilNext'] = untilNext
+                status['lures'] = totalDisks
+                status['balls'] = totalBalls
                 dbq.put((WorkerStatus, {0: WorkerStatus.db_format(status)}))
 
                 # Got the response, check for captcha, parse it out, then send
