@@ -2254,8 +2254,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                     levelResponse = req.level_up_rewards(level=levelup)
                                     time.sleep(1)
                                     levelResponse = req.call()
-                                    if levelResponse['responses']['LEVEL_UP_REWARDS']['Result']:
-                                        levelStatus = levelResponse['responses']['LEVEL_UP_REWARDS']['Result']
+                                    if levelResponse['responses']['LEVEL_UP_REWARDS']['result']:
+                                        levelStatus = levelResponse['responses']['LEVEL_UP_REWARDS']['result']
                                         if levelStatus == 0:
                                             log.warning('$$$PLAYERSTATS$$$ SHIT IT\'S UNSET WHAT DOES THAT MEAN')
                                         elif levelStatus == 1:
