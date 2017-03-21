@@ -1720,7 +1720,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     stopsskipped = 0
     alreadyLeveled = False
     USELESS = [101, 102, 103, 104, 201, 202, 602, 603, 604, 701, 702, 703, 704, 705]
-    dittomons = [16, 19, 41, 129]
+    dittomons = [16, 19, 41, 129, 161, 163, 193]
     forbidden = False
     forts = []
     wild_pokemon = []
