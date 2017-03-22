@@ -1719,6 +1719,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     skipped = 0
     stopsskipped = 0
     alreadyLeveled = False
+    level = 0
     USELESS = [101, 102, 103, 104, 201, 202, 602, 603, 604, 701, 702, 703, 704, 705]
     dittomons = [16, 19, 41, 129, 161, 163, 193]
     forbidden = False
@@ -1974,7 +1975,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     catch_pid = 'blueballs'
                 # Now catch it if it's a ditto-mon (16, 19, 21, 41, 129)
                 catch_pid = None
-                if args.ditto is True:
+                if args.ditto is True and int(level) < int(args.level_cap):
                     if p['pokemon_data']['pokemon_id'] in dittomons:
                         log.info('***CATCHING DUDES***Ditto pokemon found, catching - EncID:%s', b64encode(str(p['encounter_id'])))
                         current_ball = 1
@@ -2184,7 +2185,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                      datetime(1970, 1, 1)).total_seconds())) for f in query]
 
         # Complete tutorial with a Pokestop spin
-        if args.complete_tutorial and not (len(captcha_url) > 1) and args.pokestop_spinning is False:
+        if args.complete_tutorial and not (len(captcha_url) > 1) and args.pokestop_spinning is False and int(level) < int(args.level_cap):
             if config['parse_pokestops']:
                 tutorial_pokestop_spin(
                     api, map_dict, forts, step_location, account)
@@ -2400,7 +2401,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                             log.warning('trashing failed - panic')
                                             trash_status = 1
 
-                        if breakableId is not None and egg is not None or unbreakableId is not None and egg is not None:
+                        if breakableId is not None and egg is not None and args.incubate_eggs is True and int(level) < int(args.level_cap) or unbreakableId is not None and egg is not None and args.incubate_eggs is True and int(level) < int(args.level_cap):
                             if breakableId is None:
                                 bater = unbreakableId
                             else:

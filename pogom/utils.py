@@ -130,11 +130,19 @@ def get_args():
                         help='Start an encounter to gather IVs and moves.',
                         action='store_true', default=False)
     parser.add_argument('-ditto', '--ditto',
-                        help='Catch Pidgey, Rattata, Zubat, Magikarp, Sentret, HootHoot, Yanma and check if it\'s Ditto. Requires 3 API calls per Ditto-Mon',
-                        action='store_true', default=False)
+                        help='Catch Pidgey, Rattata, Zubat, Magikarp, Sentret,' +
+                        ' HootHoot, Yanma and check if it\'s Ditto. Requires 3' +
+                        ' API calls per Ditto-Mon', action='store_true',
+                        default=False)
     parser.add_argument('-spin', '--pokestop-spinning',
-                        help='Spin stops when in range. **Conflicts with -tut!**',
+                        help='Spin stops when in range.',
                         action='store_true', default=False)
+    parser.add_argument('-inc', '--incubate-eggs',
+                        help='Incubate eggs when possible.',
+                        action='store_true', default=False)
+    parser.add_argument('-lc', '--level-cap',
+                        help='Stop catching Ditto-mons, spinning stops and ' +
+                             'incubating eggs at this level.', default=40)
     parser.add_argument('-lure', '--setLure',
                         help='Set lures on open Pokestops',
                         action='store_true', default=False)
