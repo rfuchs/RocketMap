@@ -1978,7 +1978,13 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 if args.ditto is True and int(level) < int(args.level_cap):
                     if p['pokemon_data']['pokemon_id'] in dittomons:
                         log.info('***CATCHING DUDES***Ditto pokemon found, catching - EncID:%s', b64encode(str(p['encounter_id'])))
-                        current_ball = 1
+                        if pokeball_count != 0:
+                            current_ball = 1
+                        else:
+                            if greatball_count != 0:
+                                current_ball = 2
+                            else:
+                                current_ball = 3
                         while catch_pid is None:
                             time.sleep(2.10)
                             random_throw = 1.5 + 0.25 * random()
