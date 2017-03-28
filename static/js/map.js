@@ -393,6 +393,41 @@ function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
     window.open(url, '_blank')
 }
 
+function scout(encounterId) {
+    var encounterIdLong = atob(encounterId)
+    var infoEl = $("#scoutCP" + encounterIdLong)
+    var probsEl = $("#scoutProb" + encounterIdLong)
+    return $.ajax({
+        url: 'scout',
+        type: 'GET',
+        data: {
+            'encounter_id': encounterId
+        },
+        dataType: 'json',
+        cache: false,
+        beforeSend: function () {
+            infoEl.text("Scouting, please wait...")
+            infoEl.show()
+        },
+        error: function () {
+            infoEl.text("Error scouting, try again?")
+        },
+        success: function (data, textStatus, jqXHR) {
+            console.log(data)
+            if ('cp' in data) {
+                infoEl.text("CP: " + data.cp + " | Pokemon Level: " + data.level + " | Scout Level: " + data.trainer_level)
+            } else {
+                infoEl.text(data.msg)
+            }
+            if ('prob_red' in data) {
+                probsEl.text("Pokeball: " + data.prob_red + "% | Great Ball: " + data.prob_blue + "% | Ultra Ball: " + data.prob_yellow + "%")
+                probsEl.show()
+            }
+        }
+    })
+
+}
+
 function pokemonLabel(name, rarity, types, disappearTime, id, latitude, longitude, encounterId, atk, def, sta, move1, move2, weight, height, gender) {
     var disappearDate = new Date(disappearTime)
     var rarityDisplay = rarity ? '(' + rarity + ')' : ''
@@ -422,6 +457,7 @@ function pokemonLabel(name, rarity, types, disappearTime, id, latitude, longitud
             </div>
             `
     }
+    var encounterIdLong = atob(encounterId)
     var contentstring = `
         <div>
             <b>${name}</b>
@@ -441,11 +477,14 @@ function pokemonLabel(name, rarity, types, disappearTime, id, latitude, longitud
             Location: ${latitude.toFixed(6)}, ${longitude.toFixed(7)}
         </div>
             ${details}
+            <div id="scoutCP${encounterIdLong}" style="display:none;"></div>
+            <div id="scoutProb${encounterIdLong}" style="display:none;"></div>
         <div>
             <a href='javascript:excludePokemon(${id})'>Exclude</a>&nbsp;&nbsp
             <a href='javascript:notifyAboutPokemon(${id})'>Notify</a>&nbsp;&nbsp
             <a href='javascript:removePokemonMarker("${encounterId}")'>Remove</a>&nbsp;&nbsp
-            <a href='javascript:void(0);' onclick='javascript:openMapDirections(${latitude},${longitude});' title='View in Maps'>Get directions</a>
+            <a href='javascript:void(0);' onclick='javascript:openMapDirections(${latitude},${longitude});' title='View in Maps'>Get directions</a>&nbsp;&nbsp
+            <a href='javascript:void(0);' onclick='javascript:scout("${encounterId}");' title='Scout CP'>Scout</a>
         </div>`
     return contentstring
 }

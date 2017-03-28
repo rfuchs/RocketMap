@@ -129,6 +129,12 @@ def get_args():
     parser.add_argument('-enc', '--encounter',
                         help='Start an encounter to gather IVs and moves.',
                         action='store_true', default=False)
+    parser.add_argument('-saa', '--scout-account-auth', default="ptc",
+                        help='Scout auth')
+    parser.add_argument('-sau', '--scout-account-username', default=None,
+                        help='Scout username')
+    parser.add_argument('-sap', '--scout-account-password', default=None,
+                        help='Scout password')
     parser.add_argument('-ditto', '--ditto',
                         help='Catch Pidgey, Rattata, Zubat, Magikarp, Sentret,' +
                         ' HootHoot, Yanma and check if it\'s Ditto. Requires 3' +
