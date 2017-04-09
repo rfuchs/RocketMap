@@ -2677,7 +2677,13 @@ def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
     for g in gym_responses.values():
         gym_state = g['gym_state']
         gym_id = gym_state['fort_data']['id']
-        log.warning('YOU NEED THIS: %s', g)
+
+        gym_details[gym_id] = {
+            'gym_id': gym_id,
+            'name': g['name'],
+            'description': g.get('description'),
+            'url': g['urls'][0],
+        }
 
         if args.webhooks:
             webhook_data = {
@@ -2758,19 +2764,6 @@ def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
             i += 1
         if args.webhooks:
             wh_update_queue.put(('gym_details', webhook_data))
-            # Explicitly set 'webhook_data', in case we want to change
-            # the information pushed to webhooks.  Similar to above
-            # and previous commits.
-            wh_update_queue.put(('gym', {
-                'gym_id':b64encode(str(gym_id)),
-                'team': gym_state['fort_data'].get('owned_by_team', 0),
-                'guard_pokemon_id': f.get('guard_pokemon_id', 0),
-                'gym_points': f.get('gym_points', 0),
-                'enabled': f['enabled'],
-                'latitude': f['latitude'],
-                'longitude': f['longitude'],
-                'last_modified': f['last_modified_timestamp_ms']
-            }))
 
     # All this database stuff is synchronous (not using the upsert queue) on
     # purpose.  Since the search workers load the GymDetails model from the
