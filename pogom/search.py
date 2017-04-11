@@ -1050,6 +1050,18 @@ def search_worker_thread(args, account_queue, account_failures,
                 greatball_count = 0
                 ultraball_count = 0
                 totalBalls = 0
+                try:
+                    test = response_dict['responses']['GET_INVENTORY']
+                except KeyError:
+                    if response_dict['status_code'] == 100:
+                        status['message'] = ('{} recieved SESSION_INVALIDATED. Check API version / Bossland status').format(account['username'])
+                        log.exception('{}. Exception message: {}'.format(
+                            status['message'], repr(e)))
+                    elif response_dict['status_code'] == 3:
+                        status['message'] = ('{} recieved BAD_REQUEST. This account is banned').format(account['username'])
+                        log.exception('{}. Exception message: {}'.format(
+                            status['message'], repr(e)))
+
                 for items in response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
                     inventory_item_data = items['inventory_item_data']
                     if 'player_stats' in inventory_item_data:
