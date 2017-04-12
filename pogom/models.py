@@ -1987,7 +1987,6 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 req.download_settings()
                 req.get_buddy_walked()
                 encounter_result = req.call()
-                encounter_result = clear_dict_response(encounter_result)
 
                 captcha_url = encounter_result['responses']['CHECK_CHALLENGE'][
                         'challenge_url']  # Check for captcha
@@ -2243,6 +2242,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                         else:
                                             log.info('***CATCHING DUDES***Non-ditto disposing failed - trying again in 10 sec')
 
+            encounter_result = clear_dict_response(encounter_result)
             if args.webhooks:
 
                 wh_poke = pokemon[p['encounter_id']].copy()
