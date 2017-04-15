@@ -2291,7 +2291,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
         for f in forts:
             if config['parse_pokestops'] and f.get('type') == 1:  # Pokestops.
-                distance = 0.03
+                distance = 0.06
                 egg = None
                 bater = None
                 breakableId = None
