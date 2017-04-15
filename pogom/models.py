@@ -1842,7 +1842,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
         wild_pokemon_count = len(wild_pokemon)
     if forts:
         forts_count = len(forts)
-
+    totalDisks = 0
     for items in map_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
         inventory_item_data = items['inventory_item_data']
         if 'player_stats' in inventory_item_data:
@@ -2561,7 +2561,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                             'active_fort_modifier': active_fort_modifier
                         }))
                 else:
-                    distance = 0.03
+                    distance = 0.06
                     if in_radius((f['latitude'], f['longitude']), step_location, distance):
                         if args.setLure is True:
                             if args.lureFence is not None:
@@ -2588,7 +2588,9 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                             if totalDisks == 0:
                                 log.warning('FINNA TRYNA LURE BUT I AINT GOT NONE')
                                 forbidden = True
-                            while lure_status is None and totalDisks > 0 and forbidden is False:
+                                log.warning('This account has no lures! Thowing exception!')
+                                meme = spin_response['ThisDoesntExist']
+                            while lure_status is None and forbidden is False:
                                 req = api.create_request()
                                 lure_request = req.add_fort_modifier(modifier_type=lure_id,
                                                                      fort_id=f['id'],
