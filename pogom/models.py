@@ -2542,8 +2542,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                     break
                                 else:
                                     log.warning('###EGG### Excess pokemon removal failed - trying again in 10 sec')
-                else:
-                    log.warning('STOP IS NOT IN RANGE FOR SPINNING')
+
                 if 'active_fort_modifier' in f:
                     lure_expiration = (datetime.utcfromtimestamp(
                         f['last_modified_timestamp_ms'] / 1000.0) +
