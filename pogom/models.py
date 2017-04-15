@@ -45,7 +45,7 @@ args = get_args()
 flaskDb = FlaskDB()
 cache = TTLCache(maxsize=100, ttl=60 * 5)
 
-db_schema_version = 16
+db_schema_version = 17
 
 
 class MyRetryDB(RetryOperationalError, PooledMySQLDatabase):
@@ -112,6 +112,7 @@ class Pokemon(BaseModel):
     weight = FloatField(null=True)
     height = FloatField(null=True)
     gender = SmallIntegerField(null=True)
+    form = SmallIntegerField(null=True)
     last_modified = DateTimeField(
         null=True, index=True, default=datetime.utcnow)
 
@@ -2010,6 +2011,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 'height': None,
                 'weight': None,
                 'gender': None,
+                'form': None,
             }
 
             if (encounter_result is not None and 'wild_pokemon'
@@ -2029,6 +2031,10 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     'weight': pokemon_info['weight_kg'],
                     'gender': pokemon_info['pokemon_display']['gender'],
                 })
+                # Check for Unown's alphabetic character
+                if pokemon_info['pokemon_id'] == 201:
+                    pokemon[p['encounter_id']]['form'] = pokemon_info[
+                        'pokemon_display'].get('form', None)
 
                 pokeball_count = 0
                 greatball_count = 0
@@ -3288,3 +3294,9 @@ def database_migrate(db, old_ver):
             migrate(
                 migrator.add_index('pokestop', ('last_updated',), False)
             )
+
+    if old_ver < 17:
+        migrate(
+            migrator.add_column('pokemon', 'form',
+                                SmallIntegerField(null=True))
+        )
