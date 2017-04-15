@@ -2291,7 +2291,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
         for f in forts:
             if config['parse_pokestops'] and f.get('type') == 1:  # Pokestops.
-                distance = 0.06
+                distance = 0.04
                 egg = None
                 bater = None
                 breakableId = None
@@ -2542,7 +2542,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                     break
                                 else:
                                     log.warning('###EGG### Excess pokemon removal failed - trying again in 10 sec')
-
+                else:
+                    log.warning('STOP IS NOT IN RANGE FOR SPINNING')
                 if 'active_fort_modifier' in f:
                     lure_expiration = (datetime.utcfromtimestamp(
                         f['last_modified_timestamp_ms'] / 1000.0) +
@@ -2561,7 +2562,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                             'active_fort_modifier': active_fort_modifier
                         }))
                 else:
-                    distance = 0.06
+                    distance = 0.04
                     if in_radius((f['latitude'], f['longitude']), step_location, distance):
                         if args.setLure is True:
                             if args.lureFence is not None:
