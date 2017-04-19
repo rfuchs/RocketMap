@@ -1136,6 +1136,10 @@ class KeyScheduler(object):
 
     def __init__(self, keys):
         self.keys = {}
+
+        if keys is None:
+            keys = {}
+
         for key in keys:
             self.keys[key] = {
                 'remaining': 0,
