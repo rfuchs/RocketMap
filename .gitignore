@@ -16,14 +16,13 @@ _build
 _build_html
 beehive.*
 static/pixel_icons/*.png
-static/icons-sprite.png
-static/icons-large-sprite.png
 static/icons-shuffle-sprite128x.png
 static/icons/*.png
 *.csv
 *.bat
 *.sh
 *.log
+*.txt
 !docs/make.bat
 !Tools/Easy-Setup/easy-setup.sh
 !Tools/Easy-Setup/setup.bat
